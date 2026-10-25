@@ -8,11 +8,12 @@ Tools: `list_guidelines`, `get_guideline`, `search_guidelines`, `list_shapekerne
     pip install -r connector/requirements.txt
     claude mcp add leap71 -- python /Pfad/zum/Repo/connector/server.py
 
-Für Claude Desktop in `claude_desktop_config.json` unter `mcpServers`:
-    "leap71": {"command": "python", "args": ["C:\\Pfad\\zum\\Repo\\connector\\server.py"]}
+## Remote für claude.ai über Cloudflare Tunnel
+Umgebungsvariablen des Servers:
+- `ALLOWED_HOSTS`: Hostname des Tunnels ohne https://, z.B. `abc-def.trycloudflare.com`
+- `SECRET_PATH`: zufälliger Pfadanteil, Endpunkt wird `https://<host>/<SECRET_PATH>/mcp`
 
-## Remote (claude.ai, Custom Connector)
-    python connector/server.py --http --port 8000
-Server öffentlich per HTTPS erreichbar machen (Hosting oder Tunnel), URL `https://<host>/mcp` unter
-claude.ai > Einstellungen > Connectors > Benutzerdefinierten Connector hinzufügen eintragen.
-Hinweis: Ohne Authentifizierung ist der Endpunkt für jeden mit der URL lesbar.
+PowerShell:
+    $env:ALLOWED_HOSTS="abc-def.trycloudflare.com"; $env:SECRET_PATH="<zufall>"
+    python connector\server.py --http --port 8000
+    cloudflared tunnel --url http://127.0.0.1:8000

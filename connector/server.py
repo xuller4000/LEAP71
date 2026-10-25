@@ -4,10 +4,12 @@ Start lokal (Claude Desktop / Claude Code):  python connector/server.py
 Start remote (claude.ai Custom Connector):   python connector/server.py --http --port 8000
 """
 import argparse
+import os
 import re
 from pathlib import Path
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.transport_security import TransportSecuritySettings
 
 ROOT = Path(__file__).resolve().parent.parent
 GUIDELINES = ROOT / "guidelines"
@@ -123,8 +125,22 @@ if __name__ == "__main__":
     ap.add_argument("--port", type=int, default=8000)
     args = ap.parse_args()
     if args.http:
-        mcp.settings.port = args.port
-        mcp.settings.host = "0.0.0.0"
-        mcp.run("streamable-http")
+        # nur lokal binden; der Cloudflare Tunnel greift auf 127.0.0.1 zu
+        # ALLOWED_HOSTS: Tunnel-Hostname, z.B. "abc.trycloudflare.com" (Komma-getrennt, ohne https://)
+        # SECRET_PATH: geheimer Pfadanteil; Endpunkt wird /<SECRET_PATH>/mcp (einfacher Zugriffsschutz)
+        hosts = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()]
+        secret = os.environ.get("SECRET_PATH", "").strip("/")
+        security = TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=["127.0.0.1:*", "localhost:*"] + hosts,
+            allowed_origins=["https://claude.ai"] + [f"https://{h}" for h in hosts],
+        )
+        mcp.run(
+            "streamable-http",
+            host="127.0.0.1",
+            port=args.port,
+            streamable_http_path=f"/{secret}/mcp" if secret else "/mcp",
+            transport_security=security,
+        )
     else:
         mcp.run()
